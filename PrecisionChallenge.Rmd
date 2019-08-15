@@ -141,10 +141,10 @@ succes_time <- plot_ly(sum_yr, x = ~Year, y = ~Pass,
                        type = "scatter", mode = "markers+lines") 
 
 percent_time <- plot_ly(Change_percent, x = ~Year, y = ~`Percent pass Berchdel test`, 
-                        type = "scatter", mode = "markers+lines") 
+                        type = "scatter", mode = "markers+lines", color = "orange") 
 
-subplot(percent_time, succes_time, nrows = 2)
-
+succes_time
+percent_time
 ```
 
 Bassed on the binary definition `r percent_pass` $\%$ of movies passed the test. 
