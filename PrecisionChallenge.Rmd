@@ -21,12 +21,14 @@ library(readxl)
 library(tidyverse)
 library(caret)
 
-Movies_raw <- read_xlsx("Bechdel.xlsx", col_names = TRUE)
-Movies_test <- read_csv("test.csv", col_names = TRUE)
+Movies_raw <- read_xlsx("Bechdel.xlsx", col_names = TRUE) 
+Movies_test <- read_csv("test.csv", col_names = TRUE) # Data to predict
 
 ```
 
 ### Data cleaning
+
+
 
 ```{r clean, warning = FALSE, echo=TRUE}
 
@@ -45,18 +47,14 @@ func <- function(x){
 
 Movies_num <- as.data.frame(lapply(Movies_num, FUN = func))
 
-str(Movies)
-
-#mdata <- melt(Movies, id=c("year"))
-
 #Remove id column
 Mov_code <- Movies[,2]
-#Movies %>% modify_at(c(1,3:7,8), as.numeric)
 
 # Remove NA from data set
 Movies_num <- Movies_num[complete.cases(Movies_num), ]
 
-# Add provit variable gross less budget (assuming the budget = real cost to produce movies)
+# Add provit variable (gross less budget) to see if it adds any insight
+# assuming that budget = real cost to produce movies
 Movies_num$domProfit <- Movies_num$domgross - Movies_num$budget
 Movies_num$intProfit <- Movies_num$intgross - Movies_num$budget
 Movies_num$domProfit_2013 <- Movies_num$domgross_2013 - Movies_num$budget_2013
@@ -64,14 +62,11 @@ Movies_num$intProfit_2013 <- Movies_num$intgross_2013 - Movies_num$budget_2013
 
 # Reorder columns and remove NA
 Movies_num <- Movies_num[ ,c(1, 2, 3, 4, 10, 11, 6, 7, 8, 12, 13, 9)]
-
-# Remove NA from data set
 Movies_clean <- Movies_num[complete.cases(Movies_num), ]
 
+# Summarize data 
 summary(Movies_clean)
 
-#plot_ly(Movies, x = ~`Dom gross`, y = ~Year, type = 'scatter', mode = 'lines')
-#View(Movies)
 ```
 
 
@@ -80,9 +75,9 @@ summary(Movies_clean)
 
 ```{r warning = FALSE, echo=TRUE}
 
-# Look at the distribution of the data 
+# Look at how data id distributed by budget, gross sales, profit
+
 hist_l = list()
-#Movies_quant <- as.data.frame(Movies[,-c(2,6)])
 hist_p <- function(df){
   for(i in 1:10){
     hist_l[i] <- plot_ly(x = df[ ,i], type = "histogram", name = names(df)[i]) 
@@ -90,18 +85,20 @@ hist_p <- function(df){
   return(hist_l)
 }
 
-
 hist_pl <- hist_p(Movies_clean)
 
 unadjusted <- subplot(hist_pl[[2]], hist_pl[[3]], hist_pl[[4]], hist_pl[[5]], hist_pl[[1]], nrows = 4, margin = 0.04, 
                       heights = c(0.25, 0.25, 0.25, 0.25))
 adjusted <- subplot(hist_pl[[7]], hist_pl[[8]], hist_pl[[9]], nrows = 3, margin = 0.04, heights = c(0.33, 0.33, 0.33))
-#year
+
 unadjusted
 adjusted
 
 ```
 
+
+It can be seen that the the variables roughly follow a Poisson distribution, the adjusted 2013 variables have higher means 
+and it follows that the distributions are less skewed when compared to the unadjusted variables. 
 
 ### Analyis part 2
 
@@ -147,7 +144,7 @@ succes_time
 percent_time
 ```
 
-Bassed on the binary definition `r percent_pass` $\%$ of movies passed the test. 
+Bassed on the binary definition `r percent_pass` $\%$ of movies passed the Berchdel test. When the percentage pass is examined overtime it can be seen that there is a slight increase in movies that pass the Berchdel test since 1970. It is however notable that the quantity of movies produced also increased over the period.  
 
 ### Data Prediction
 
@@ -175,7 +172,7 @@ set.seed(50)
 scale_train_up <- upSample(x = train[, 2:11], y = train$Test, list = FALSE, yname = "Test")
 table(scale_train_up$Test)
 
-# Look at different models 
+# Examine different models and choose appropiate based on p-value 
 
 Movies_glm <- glm(Test ~ budget + domgross + intgross + domProfit + intProfit 
                     + budget_2013 + domgross_2013 + intgross_2013 + domProfit_2013
@@ -198,15 +195,12 @@ pred <- predict(Movies_glm_2, newdata = test_split, type = "response")
 pred_test <- ifelse(pred > 0.5, 1, 0)
 Test_pred <- factor(pred_test, levels=c(0, 1))
 Test_act <- factor(test_split$Test)
-mean(Test_pred == Test_act)
+Pred_pro <- mean(Test_pred == Test_act)
 
-# Predict test.csv data
-Movies_test <- read_csv("test.csv", col_names = TRUE)
-
+# Predict test.csv movies data set using model 
 pred_N <- predict(Movies_glm_2, newdata = Movies_test, type = "response")
 pred_test_csv <- ifelse(pred_N > 0.5, 1, 0)
 Test_pred_csv <- factor(pred_test_csv, levels=c(0, 1))
-
 
 Movies_New <- as.data.frame(cbind(Movies_test, Test_pred_csv))
 
@@ -215,7 +209,12 @@ func <- function(x){
 }
 
 Movies_Pred <- as.data.frame(lapply(Movies_New$Test_pred_csv, FUN = func))
+
 head(Movies_New)
+
+# Save predicted movie dasta set
 save(x = Movies_Pred, file = "Movies_Pred.csv")
 
 ```
+
+After prediction the accuracy was calculated to be `r Pred_pro` which is not very accurate. Other methods may be used that would posibly give greater accuracy. 
